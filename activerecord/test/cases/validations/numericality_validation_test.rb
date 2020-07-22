@@ -61,6 +61,18 @@ class NumericalityValidationTest < ActiveRecord::TestCase
     assert_predicate subject, :valid?
   end
 
+  def test_date_attribute
+    model_class.attribute(:start_date, :date)
+    model_class.attribute(:end_date, :date)
+    model_class.validates_numericality_of(
+      :end_date, greater_than: :start_date
+    )
+
+    subject = model_class.new(start_date: 1.week.ago, end_date: 1.day.ago)
+
+    assert_predicate subject, :valid?
+  end
+
   def test_on_abstract_class
     abstract_class = Class.new(ActiveRecord::Base) do
       self.abstract_class = true

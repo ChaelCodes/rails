@@ -18,8 +18,8 @@ module ActiveModel
       def check_validity!
         keys = CHECKS.keys - [:odd, :even]
         options.slice(*keys).each do |option, value|
-          unless value.is_a?(Numeric) || value.is_a?(Proc) || value.is_a?(Symbol)
-            raise ArgumentError, ":#{option} must be a number, a symbol or a proc"
+          unless value.is_a?(Numeric) || value.is_a?(Proc) || value.is_a?(Symbol) || is_date_or_time?(value)
+            raise ArgumentError, ":#{option} must be a number, date, a symbol or a proc"
           end
         end
       end
@@ -88,6 +88,8 @@ module ActiveModel
           raw_value
         elsif is_integer?(raw_value)
           raw_value.to_i
+        elsif is_date_or_time?(raw_value)
+          raw_value.to_datetime.to_i
         elsif !is_hexadecimal_literal?(raw_value)
           parse_float(Kernel.Float(raw_value), precision, scale)
         end
@@ -109,6 +111,10 @@ module ActiveModel
 
       def is_hexadecimal_literal?(raw_value)
         HEXADECIMAL_REGEX.match?(raw_value.to_s)
+      end
+
+      def is_date_or_time?(raw_value)
+        raw_value.is_a?(Date) || raw_value.is_a?(DateTime) || raw_value.is_a?(Time)
       end
 
       def filtered_options(value)

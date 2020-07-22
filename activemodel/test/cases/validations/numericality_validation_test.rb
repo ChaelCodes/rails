@@ -21,40 +21,41 @@ class NumericalityValidationTest < ActiveModel::TestCase
   FLOATS = [0.0, 10.0, 10.5, -10.5, -0.0001] + FLOAT_STRINGS
   INTEGERS = [0, 10, -10] + INTEGER_STRINGS
   BIGDECIMAL = BIGDECIMAL_STRINGS.collect! { |bd| BigDecimal(bd) }
+  DATES = [Date.today, Time.now, DateTime.now]
   JUNK = ["not a number", "42 not a number", "0xdeadbeef", "-0xdeadbeef", "+0xdeadbeef", "0xinvalidhex", "0Xdeadbeef", "00-1", "--3", "+-3", "+3-1", "-+019.0", "12.12.13.12", "123\nnot a number"]
   INFINITY = [1.0 / 0.0]
 
   def test_default_validates_numericality_of
     Topic.validates_numericality_of :approved
     invalid!(NIL + BLANK + JUNK)
-    valid!(FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
+    valid!(FLOATS + INTEGERS + BIGDECIMAL + DATES + INFINITY)
   end
 
   def test_validates_numericality_of_with_nil_allowed
     Topic.validates_numericality_of :approved, allow_nil: true
 
     invalid!(JUNK + BLANK)
-    valid!(NIL + FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
+    valid!(NIL + FLOATS + INTEGERS + BIGDECIMAL + DATES + INFINITY)
   end
 
   def test_validates_numericality_of_with_blank_allowed
     Topic.validates_numericality_of :approved, allow_blank: true
 
     invalid!(JUNK)
-    valid!(NIL + BLANK + FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
+    valid!(NIL + BLANK + FLOATS + INTEGERS + BIGDECIMAL + DATES + INFINITY)
   end
 
   def test_validates_numericality_of_with_integer_only
     Topic.validates_numericality_of :approved, only_integer: true
 
-    invalid!(NIL + BLANK + JUNK + FLOATS + BIGDECIMAL + INFINITY)
+    invalid!(NIL + BLANK + JUNK + FLOATS + BIGDECIMAL + DATES + INFINITY)
     valid!(INTEGERS)
   end
 
   def test_validates_numericality_of_with_integer_only_and_nil_allowed
     Topic.validates_numericality_of :approved, only_integer: true, allow_nil: true
 
-    invalid!(JUNK + BLANK + FLOATS + BIGDECIMAL + INFINITY)
+    invalid!(JUNK + BLANK + FLOATS + BIGDECIMAL + DATES + INFINITY)
     valid!(NIL + INTEGERS)
   end
 
@@ -62,7 +63,7 @@ class NumericalityValidationTest < ActiveModel::TestCase
     Topic.validates_numericality_of :approved, only_integer: :condition_is_false
 
     invalid!(NIL + BLANK + JUNK)
-    valid!(FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
+    valid!(FLOATS + INTEGERS + BIGDECIMAL + DATES + INFINITY)
   end
 
   def test_validates_numericality_of_with_integer_only_and_proc_as_value
@@ -70,7 +71,7 @@ class NumericalityValidationTest < ActiveModel::TestCase
     Topic.validates_numericality_of :approved, only_integer: Proc.new(&:allow_only_integers?)
 
     invalid!(NIL + BLANK + JUNK)
-    valid!(FLOATS + INTEGERS + BIGDECIMAL + INFINITY)
+    valid!(FLOATS + INTEGERS + BIGDECIMAL + DATES + INFINITY)
   end
 
   def test_validates_numericality_with_greater_than
@@ -94,6 +95,14 @@ class NumericalityValidationTest < ActiveModel::TestCase
     valid!(["10.1", "11"])
   end
 
+  def test_validates_numericality_with_greater_than_using_date_value
+    date = 2.days.ago
+    Topic.validates_numericality_of :approved, greater_than: date
+
+    invalid!([3.days.ago, date], "must be greater than #{date.to_datetime.to_i}")
+    valid!([Time.now, Date.today, DateTime.now])
+  end
+
   def test_validates_numericality_with_greater_than_or_equal
     Topic.validates_numericality_of :approved, greater_than_or_equal_to: 10
 
@@ -113,6 +122,14 @@ class NumericalityValidationTest < ActiveModel::TestCase
 
     invalid!(["-10", "9", "9.9"], "must be greater than or equal to 10")
     valid!(["10", "10.1", "11"])
+  end
+
+  def test_validates_numericality_with_greater_than_or_equal_using_date_value
+    date = 2.days.ago
+    Topic.validates_numericality_of :approved, greater_than_or_equal_to: date
+
+    invalid!([3.days.ago], "must be greater than or equal to #{date.to_datetime.to_i}")
+    valid!([Time.now, Date.today, DateTime.now, date])
   end
 
   def test_validates_numericality_with_equal_to
@@ -157,6 +174,13 @@ class NumericalityValidationTest < ActiveModel::TestCase
     valid!(["-10", "9", "9.9"])
   end
 
+  def test_validates_numericality_with_less_than_using_string_value
+    Topic.validates_numericality_of :approved, less_than: Date.today
+
+    invalid!([1.minute.ago, -1.day.ago, Date.today], "must be less than #{Date.today.to_datetime.to_i}")
+    valid!([2.days.ago])
+  end
+
   def test_validates_numericality_with_less_than_or_equal_to
     Topic.validates_numericality_of :approved, less_than_or_equal_to: 10
 
@@ -176,6 +200,13 @@ class NumericalityValidationTest < ActiveModel::TestCase
 
     invalid!(["10.1", "11"], "must be less than or equal to 10")
     valid!(["-10", "9", "9.9", "10"])
+  end
+
+  def test_validates_numericality_with_less_than_or_equal_using_date_value
+    Topic.validates_numericality_of :approved, less_than_or_equal_to: Date.today
+
+    invalid!([1.minute.ago, -1.day.ago], "must be less than or equal to #{Date.today.to_datetime.to_i}")
+    valid!([Date.today, 2.days.ago])
   end
 
   def test_validates_numericality_with_odd
@@ -211,6 +242,13 @@ class NumericalityValidationTest < ActiveModel::TestCase
 
     invalid!(["0", "0.0"])
     valid!(["-1", "1.1", "42"])
+  end
+
+  def test_validates_numericality_with_other_than_using_date_value
+    Topic.validates_numericality_of :approved, other_than: Date.today
+
+    invalid!([Date.today])
+    valid!([Time.now, 3.days.ago])
   end
 
   def test_validates_numericality_with_proc
